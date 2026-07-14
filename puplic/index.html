@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Human Identification & Skeleton Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <div id="container">
+    <video id="video" playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls">
+      <button id="switchBtn">Switch Camera</button>
+      <button id="viewBtn">Registered Humans (<span id="count">0</span>)</button>
+    </div>
+
+    <div id="drawer">
+      <div class="drawer-header">
+        <h3>Registered Humans</h3>
+        <button id="closeDrawer" style="padding: 4px 12px; font-size: 12px;">Close</button>
+      </div>
+      <div id="peopleList">Loading...</div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
