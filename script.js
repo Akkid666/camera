@@ -1,114 +1,224 @@
+// ======================================================
+// AI Camera
+// script.js
+// PART 1
+// ======================================================
+
+// Elements
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-const fpsText = document.getElementById("fps");
-const objectText = document.getElementById("objects");
 const loading = document.getElementById("loading");
+const counter = document.getElementById("counter");
 
-let model;
-let lastTime = performance.now();
+// AI model
+let model = null;
 
-async function startCamera(){
+// Camera size
+let cameraWidth = 0;
+let cameraHeight = 0;
 
-const stream = await navigator.mediaDevices.getUserMedia({
+// Colors
+const BOX_COLOR = "#00ff00";
+const TEXT_COLOR = "#00ff00";
 
-video:{
-facingMode:"environment"
-},
+//------------------------------------------------------
+// Start Camera
+//------------------------------------------------------
 
-audio:false
+async function startCamera() {
 
-});
+    const stream = await navigator.mediaDevices.getUserMedia({
 
-video.srcObject = stream;
+        video: {
 
-return new Promise(resolve=>{
+            facingMode: {
+                ideal: "environment"
+            }
 
-video.onloadedmetadata=()=>{
+        },
 
-video.play();
+        audio: false
 
-resolve();
+    });
 
-};
+    video.srcObject = stream;
 
-});
+    return new Promise(resolve => {
 
-}
+        video.onloadedmetadata = () => {
 
-function estimateDistance(pixelHeight){
+            video.play();
 
-const focal = 900;
+            cameraWidth = video.videoWidth;
+            cameraHeight = video.videoHeight;
 
-const realHeight = 0.20;
+            canvas.width = cameraWidth;
+            canvas.height = cameraHeight;
 
-return ((realHeight*focal)/pixelHeight).toFixed(2);
+            resolve();
 
-}
+        };
 
-async function detect(){
-
-const predictions = await model.detect(video);
-
-ctx.clearRect(0,0,canvas.width,canvas.height);
-
-objectText.innerHTML="Objects: "+predictions.length;
-
-predictions.forEach(pred=>{
-
-const x=pred.bbox[0];
-const y=pred.bbox[1];
-const w=pred.bbox[2];
-const h=pred.bbox[3];
-
-ctx.strokeStyle="lime";
-ctx.lineWidth=3;
-
-ctx.strokeRect(x,y,w,h);
-
-ctx.fillStyle="lime";
-
-ctx.font="18px Arial";
-
-let label=pred.class;
-
-if(pred.class==="person"){
-
-label+=" | Height ≈ 1.7m";
+    });
 
 }
 
-label+=" | "+estimateDistance(h)+"m";
+//------------------------------------------------------
+// Load AI
+//------------------------------------------------------
 
-ctx.fillText(label,x,y-5);
+async function loadAI() {
 
-});
+    loading.innerHTML = "Loading AI...";
 
-const now=performance.now();
+    model = await cocoSsd.load();
 
-const fps=(1000/(now-lastTime)).toFixed(0);
-
-lastTime=now;
-
-fpsText.innerHTML="FPS: "+fps;
-
-requestAnimationFrame(detect);
+    loading.style.display = "none";
 
 }
 
-async function init(){
+//------------------------------------------------------
+// Draw Detection
+//------------------------------------------------------
 
-await startCamera();
+function drawPrediction(prediction) {
 
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
+    const x = prediction.bbox[0];
+    const y = prediction.bbox[1];
+    const w = prediction.bbox[2];
+    const h = prediction.bbox[3];
 
-model=await cocoSsd.load();
+    ctx.strokeStyle = BOX_COLOR;
+    ctx.lineWidth = 3;
 
-loading.style.display="none";
+    ctx.strokeRect(x, y, w, h);
 
-detect();
+    ctx.fillStyle = TEXT_COLOR;
+
+    ctx.font = "20px Arial";
+
+    const confidence =
+        Math.round(prediction.score * 100);
+
+    ctx.fillText(
+
+        prediction.class +
+        " (" +
+        confidence +
+        "%)",
+
+        x,
+
+        y - 8
+
+    );
+
+}
+
+//======================================================
+// PART 2
+// Paste directly under PART 1
+//======================================================
+
+//------------------------------------------------------
+// Detect Objects
+//------------------------------------------------------
+
+async function detectObjects() {
+
+    if (!model) {
+        requestAnimationFrame(detectObjects);
+        return;
+    }
+
+    const predictions = await model.detect(video);
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    counter.innerHTML =
+        "Objects: " + predictions.length;
+
+    for (const prediction of predictions) {
+
+        drawPrediction(prediction);
+
+    }
+
+    requestAnimationFrame(
+        detectObjects
+    );
+
+}
+
+//------------------------------------------------------
+// Resize Canvas
+//------------------------------------------------------
+
+function resizeCanvas() {
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+}
+
+window.addEventListener(
+
+    "resize",
+
+    resizeCanvas
+
+);
+
+//------------------------------------------------------
+// Handle Camera Errors
+//------------------------------------------------------
+
+function showError(message) {
+
+    loading.style.display = "block";
+
+    loading.innerHTML = message;
+
+    loading.style.color = "red";
+
+}
+
+//------------------------------------------------------
+// Initialize Everything
+//------------------------------------------------------
+
+async function init() {
+
+    try {
+
+        await startCamera();
+
+        resizeCanvas();
+
+        await loadAI();
+
+        detectObjects();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        showError(
+
+            "Unable to access the camera."
+
+        );
+
+    }
 
 }
 
