@@ -1,225 +1,127 @@
-// ======================================================
-// AI Camera
-// script.js
-// PART 1
-// ======================================================
+const videoElement = document.getElementById('video');
+const canvasElement = document.getElementById('canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const switchBtn = document.getElementById('switchBtn');
 
-// Elements
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+// Default to front camera ("user"), switch to "environment" for back
+let currentFacingMode = 'user';
+let currentStream = null;
 
-const loading = document.getElementById("loading");
-const counter = document.getElementById("counter");
+// Initialize MediaPipe Pose
+const pose = new Pose({
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+});
 
-// AI model
-let model = null;
+pose.setOptions({
+  modelComplexity: 1,
+  smoothLandmarks: true,
+  enableSegmentation: false,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
 
-// Camera size
-let cameraWidth = 0;
-let cameraHeight = 0;
+pose.onResults(onResults);
 
-// Colors
-const BOX_COLOR = "#00ff00";
-const TEXT_COLOR = "#00ff00";
+// Render skeleton and bounding box
+function onResults(results) {
+  // Adjust canvas resolution to match video feed
+  canvasElement.width = videoElement.videoWidth || window.innerWidth;
+  canvasElement.height = videoElement.videoHeight || window.innerHeight;
 
-//------------------------------------------------------
-// Start Camera
-//------------------------------------------------------
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-async function startCamera() {
+  // Draw original video frame
+  canvasCtx.drawImage(
+    results.image, 0, 0, canvasElement.width, canvasElement.height
+  );
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-
-        video: {
-
-            facingMode: {
-                ideal: "environment"
-            }
-
-        },
-
-        audio: false
-
+  if (results.poseLandmarks) {
+    // 1. Draw Skeleton Lines and Keypoints
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {
+      color: '#00FF00',
+      lineWidth: 4
+    });
+    drawLandmarks(canvasCtx, results.poseLandmarks, {
+      color: '#FF0000',
+      lineWidth: 2,
+      radius: 4
     });
 
-    video.srcObject = stream;
+    // 2. Calculate Bounding Box around the human body
+    let xMin = canvasElement.width;
+    let yMin = canvasElement.height;
+    let xMax = 0;
+    let yMax = 0;
 
-    return new Promise(resolve => {
-
-        video.onloadedmetadata = () => {
-
-            video.play();
-
-            cameraWidth = video.videoWidth;
-            cameraHeight = video.videoHeight;
-
-            canvas.width = cameraWidth;
-            canvas.height = cameraHeight;
-
-            resolve();
-
-        };
-
+    results.poseLandmarks.forEach((landmark) => {
+      if (landmark.visibility > 0.3) {
+        const x = landmark.x * canvasElement.width;
+        const y = landmark.y * canvasElement.height;
+        if (x < xMin) xMin = x;
+        if (x > xMax) xMax = x;
+        if (y < yMin) yMin = y;
+        if (y > yMax) yMax = y;
+      }
     });
 
+    // Draw Bounding Box with padding
+    const padding = 20;
+    const boxWidth = (xMax - xMin) + (padding * 2);
+    const boxHeight = (yMax - yMin) + (padding * 2);
+    const boxX = Math.max(0, xMin - padding);
+    const boxY = Math.max(0, yMin - padding);
+
+    canvasCtx.strokeStyle = '#00E5FF';
+    canvasCtx.lineWidth = 3;
+    canvasCtx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+    // Label on the box
+    canvasCtx.fillStyle = '#00E5FF';
+    canvasCtx.font = '16px sans-serif';
+    canvasCtx.fillText('Person', boxX + 5, boxY > 20 ? boxY - 8 : boxY + 20);
+  }
+  canvasCtx.restore();
 }
 
-//------------------------------------------------------
-// Load AI
-//------------------------------------------------------
+// Start video stream with chosen camera direction
+async function startCamera(facingMode) {
+  if (currentStream) {
+    currentStream.getTracks().forEach((track) => track.stop());
+  }
 
-async function loadAI() {
+  const constraints = {
+    video: {
+      facingMode: facingMode,
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    },
+    audio: false
+  };
 
-    loading.innerHTML = "Loading AI...";
-
-    model = await cocoSsd.load();
-
-    loading.style.display = "none";
-
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoElement.srcObject = currentStream;
+    await videoElement.play();
+    processVideo();
+  } catch (err) {
+    alert('Camera error: ' + err.message);
+  }
 }
 
-//------------------------------------------------------
-// Draw Detection
-//------------------------------------------------------
-
-function drawPrediction(prediction) {
-
-    const x = prediction.bbox[0];
-    const y = prediction.bbox[1];
-    const w = prediction.bbox[2];
-    const h = prediction.bbox[3];
-
-    ctx.strokeStyle = BOX_COLOR;
-    ctx.lineWidth = 3;
-
-    ctx.strokeRect(x, y, w, h);
-
-    ctx.fillStyle = TEXT_COLOR;
-
-    ctx.font = "20px Arial";
-
-    const confidence =
-        Math.round(prediction.score * 100);
-
-    ctx.fillText(
-
-        prediction.class +
-        " (" +
-        confidence +
-        "%)",
-
-        x,
-
-        y - 8
-
-    );
-
+// Loop video frames into MediaPipe Pose
+async function processVideo() {
+  if (!videoElement.paused && !videoElement.ended) {
+    await pose.send({ image: videoElement });
+    requestAnimationFrame(processVideo);
+  }
 }
 
-//======================================================
-// PART 2
-// Paste directly under PART 1
-//======================================================
+// Switch Camera Handler
+switchBtn.addEventListener('click', () => {
+  currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+  startCamera(currentFacingMode);
+});
 
-//------------------------------------------------------
-// Detect Objects
-//------------------------------------------------------
-
-async function detectObjects() {
-
-    if (!model) {
-        requestAnimationFrame(detectObjects);
-        return;
-    }
-
-    const predictions = await model.detect(video);
-
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    counter.innerHTML =
-        "Objects: " + predictions.length;
-
-    for (const prediction of predictions) {
-
-        drawPrediction(prediction);
-
-    }
-
-    requestAnimationFrame(
-        detectObjects
-    );
-
-}
-
-//------------------------------------------------------
-// Resize Canvas
-//------------------------------------------------------
-
-function resizeCanvas() {
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-}
-
-window.addEventListener(
-
-    "resize",
-
-    resizeCanvas
-
-);
-
-//------------------------------------------------------
-// Handle Camera Errors
-//------------------------------------------------------
-
-function showError(message) {
-
-    loading.style.display = "block";
-
-    loading.innerHTML = message;
-
-    loading.style.color = "red";
-
-}
-
-//------------------------------------------------------
-// Initialize Everything
-//------------------------------------------------------
-
-async function init() {
-
-    try {
-
-        await startCamera();
-
-        resizeCanvas();
-
-        await loadAI();
-
-        detectObjects();
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        showError(
-
-            "Unable to access the camera."
-
-        );
-
-    }
-
-}
-
-init();
+// Start with default front camera
+startCamera(currentFacingMode);
