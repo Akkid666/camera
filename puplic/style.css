@@ -1,0 +1,100 @@
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+body {
+  background-color: #0d0d11;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+video { 
+  display: none; 
+}
+
+canvas { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+}
+
+#controls {
+  position: absolute;
+  bottom: 30px;
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+button {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 25px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+button:active { 
+  background: rgba(255, 255, 255, 0.4); 
+}
+
+#drawer {
+  position: absolute;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100vh;
+  background: rgba(18, 18, 24, 0.95);
+  backdrop-filter: blur(15px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  transition: right 0.3s ease;
+  z-index: 20;
+  padding: 20px;
+  box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+  overflow-y: auto;
+}
+
+#drawer.open { 
+  right: 0; 
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 10px;
+}
+
+.person-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.person-id { 
+  color: #00E5FF; 
+  font-weight: bold; 
+  font-size: 16px; 
+}
