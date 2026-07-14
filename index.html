@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>AI Camera</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div id="loading">
+
+Loading AI Camera...
+
+</div>
+
+<div id="hud">
+
+<div id="topBar">
+
+<div id="fps">
+FPS: 0
+</div>
+
+<div id="objects">
+Objects: 0
+</div>
+
+</div>
+
+<video
+id="video"
+autoplay
+playsinline
+muted>
+</video>
+
+<canvas id="canvas"></canvas>
+
+<div id="crosshair"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+<script src="script.js"></script>
+
+</body>
+</html>
